@@ -14,7 +14,7 @@
 int i = 0;
 int statusCode;
 const char* ssid = "Default SSID";
-const char* passphrase = "Default passord";
+const char* passphrase = "Default password";
 String st;
 String content;
 String esid;
@@ -25,8 +25,8 @@ String epass = "";
 #define HOTSPOT_BUTTON 15
 
 #define LED_BLINK_DELAY 2000
-#define HUMIDITY_READ_DELAY 5000
-#define PARAMS_READ_DELAY 2000
+//#define HUMIDITY_READ_DELAY 5000
+//#define PARAMS_READ_DELAY 2000
 
 #define MAX_FAILED_READS_IN_ROW 2
 
@@ -52,16 +52,18 @@ AsyncWebServer controlServer(80);
 
 DHT dht(DHTPIN, DHTTYPE);
 
-float h;
-float t;
-float f;
+float h = nanf("");
+float t = nanf("");
+float f = nanf("");
 
 float new_h;
 float new_t;
-float new_f;
+float new_c;
 
 float targetTemp;
 float targetHumidity;
+
+unsigned int sensorReadInterval;
 
 String readDHTHumidity(){
   return String(h);
@@ -77,6 +79,59 @@ String readTargetTemp(){
 
 String readTargetHumidity(){
   return String(targetHumidity);
+}
+//These should read from spiffs on startup and be updated by web
+//signed char humidityMode = 1; // [- 1 or 1]
+//signed char tempMode = 1;
+
+signed char humidityMode;  // [- 1 or 1]
+signed char tempMode;      // [- 1 or 1]
+
+//bool humidity_control_out = true;
+//bool temp_control_out= true;
+
+bool humidity_control_out = false;
+bool temp_control_out= false;
+
+void updateControlStatus(){
+  humidity_control_out = humidityMode *(targetHumidity - h) > 0;
+  temp_control_out = tempMode*(targetTemp - t) > 0;
+}
+
+String readControlStatus(){
+  String out = String();
+
+  if (humidityMode > 0){
+    out += "humidifier: ";
+    
+  } else{
+    out += "dehumidifier: ";
+  }
+
+  updateControlStatus();
+ 
+  if (humidity_control_out){
+    out += "on";
+  } else{
+    out += "off";
+  }
+
+  out += "\n";
+
+  if (tempMode > 0){
+    out += "heater: ";
+    
+  } else{
+    out += "cooler: ";
+  }
+ 
+  if (temp_control_out){
+    out += "on";
+  } else{
+    out += "off";
+  }
+//  Serial.println(out);
+  return String(out);  
 }
 
 void setup()
@@ -135,16 +190,24 @@ void setup()
 
   WiFi.begin(esid.c_str(), epass.c_str());
 
+  
+
+  targetTemp = readFile(SPIFFS, "/tempInput.txt").toFloat();
+  targetHumidity = readFile(SPIFFS, "/humidityInput.txt").toFloat();
+  tempMode = readFile(SPIFFS,"/tempMode.txt").toInt();
+  humidityMode = readFile(SPIFFS, "/humidityMode.txt").toInt();
+  sensorReadInterval = readFile(SPIFFS, "/sensorReadInterval.txt").toInt();
+
   /////////////////////////////////////////////////
   // Route for root / web page
   controlServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/controller.html","text/html");
   });
   
-  // Route to load style.css file
-  controlServer.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/style.css", "text/css");
-  });
+//  // Route to load style.css file
+//  controlServer.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+//    request->send(SPIFFS, "/style.css", "text/css");
+//  });
 
   controlServer.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", readDHTTemperature().c_str());
@@ -158,18 +221,68 @@ void setup()
   controlServer.on("/getTargetTemp", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", readTargetTemp().c_str());
   });
+  controlServer.on("/getStatus", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", readControlStatus().c_str());
+  });
+  controlServer.on("/getReadInterval", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(sensorReadInterval).c_str());
+  });
+  
   controlServer.on("/setTemp",HTTP_GET,[] (AsyncWebServerRequest *request){
-    String inputMessage;
-    inputMessage = request->getParam("value")->value();
-    writeFile(SPIFFS, "/tempInput.txt", inputMessage.c_str());
-    targetTemp = inputMessage.toFloat();
+    String inputValue;
+    inputValue = request->getParam("value")->value();
+    request->send(200, "text/plain", "targetTemp received");
+
+    if (targetTemp != inputValue.toFloat()){ // Only update the value if new value is different
+      targetTemp = inputValue.toFloat();
+      writeFile(SPIFFS, "/tempInput.txt", inputValue.c_str());  
+    }
+    
   });
 
   controlServer.on("/setHumidity",HTTP_GET,[] (AsyncWebServerRequest *request){
-    String inputMessage;
-    inputMessage = request->getParam("value")->value();
-    writeFile(SPIFFS, "/humidityInput.txt", inputMessage.c_str());
-    targetHumidity = inputMessage.toFloat();
+    String inputValue;
+    inputValue = request->getParam("value")->value();
+    request->send(200, "text/plain", "targetHumidity received");
+
+    if (targetHumidity != inputValue.toFloat()){
+      targetHumidity = inputValue.toFloat();
+      writeFile(SPIFFS, "/humidityInput.txt", inputValue.c_str());
+    }
+  });
+
+  controlServer.on("/setTempMode",HTTP_GET,[] (AsyncWebServerRequest *request){
+    String inputValue;
+    inputValue = request->getParam("value")->value();
+    request->send(200, "text/plain", "tempMode received");
+
+    if (tempMode != inputValue.toInt()){
+      tempMode = inputValue.toInt();
+      writeFile(SPIFFS, "/tempMode.txt", inputValue.c_str());
+    }
+  });
+
+
+  controlServer.on("/setHumidityMode",HTTP_GET,[] (AsyncWebServerRequest *request){
+    String inputValue;
+    inputValue = request->getParam("value")->value();
+    request->send(200, "text/plain", "humidityMode received");
+
+    if (humidityMode != inputValue.toInt()){
+      humidityMode = inputValue.toInt();
+      writeFile(SPIFFS, "/humidityMode.txt", inputValue.c_str());
+    }
+  });
+
+  controlServer.on("/setReadInterval",HTTP_GET,[] (AsyncWebServerRequest *request){
+    String inputValue;
+    inputValue = request->getParam("value")->value();
+    request->send(200, "text/plain", "readInterval received");
+
+    if (sensorReadInterval != inputValue.toInt()){
+      sensorReadInterval = inputValue.toInt();
+      writeFile(SPIFFS, "/sensorReadInterval.txt", inputValue.c_str());
+    }
   });
 
 }
@@ -179,7 +292,7 @@ String readFile(fs::FS &fs, const char * path){
 //  Serial.printf("Reading file: %s\r\n", path);/
   File file = fs.open(path, "r");
   if(!file || file.isDirectory()){
-//    Serial.println("- empty file or failed to open file");/
+    Serial.println("- empty file or failed to open file");
     return String();
   }
 //  Serial.println("- read from file:");/
@@ -196,7 +309,7 @@ void writeFile(fs::FS &fs, const char * path, const char * message){
 //  Serial.printf("Writing file: %s\r\n", path);/
   File file = fs.open(path, "w");
   if(!file){
-//    Serial.println("- failed to open file for writing");/
+    Serial.println("- failed to open file for writing");
     return;
   }
   if(file.print(message)){
@@ -207,17 +320,7 @@ void writeFile(fs::FS &fs, const char * path, const char * message){
   file.close();
 }
 
-//String processor(const String& var){
-//  //Serial.println(var);
-//  if(var == "tempInput"){
-//    return readFile(SPIFFS, "/tempInput.txt");
-//  }
-//  else if(var == "humidityInput"){
-//    return readFile(SPIFFS, "/humidityInput.txt");
-//  }
-//
-//  return String();
-//}
+
 
 bool controlServer_started = false;
 
@@ -243,21 +346,10 @@ unsigned long previousTimeLED = 0;
 unsigned long currentTimeDHT= millis();
 unsigned long previousTimeDHT = 0;
 
-unsigned long currentTimeParams = millis();
-unsigned long previousTimeParams = 0;
+//unsigned long currentTimeParams = millis();
+//unsigned long previousTimeParams = 0;
 
 void loop() {
-
-  currentTimeParams = millis();
-
-  if (currentTimeParams - previousTimeParams > PARAMS_READ_DELAY){
-    previousTimeParams = currentTimeParams;
-    
-    targetTemp = readFile(SPIFFS, "/tempInput.txt").toFloat();
-  
-    targetHumidity = readFile(SPIFFS, "/humidityInput.txt").toFloat();
-
-  }
 
 
   currentTimeLED = millis();
@@ -269,22 +361,23 @@ void loop() {
 
   currentTimeDHT = millis();
 
-  if(currentTimeDHT - previousTimeDHT > HUMIDITY_READ_DELAY){
+  if(currentTimeDHT - previousTimeDHT > sensorReadInterval){
     previousTimeDHT = currentTimeDHT;
     
     new_h = dht.readHumidity();
     // Read temperature as Celsius (the default)
-    new_f = dht.readTemperature();
+    new_c = dht.readTemperature();
     // Read temperature as Fahrenheit (isFahrenheit = true)
     new_t = dht.readTemperature(true);
     
-     // Check if any reads failed and exit early (to try again).
-    if (isnan(h) || isnan(t) || isnan(f)) {
+     // Check if any reads failed 
+    if (isnan(new_h) || isnan(new_t) || isnan(new_c)) {
       Serial.println(F("Failed to read from DHT sensor!"));
       num_failed_reads_in_row++;
 
       if (num_failed_reads_in_row > MAX_FAILED_READS_IN_ROW){
         Serial.println("- failed to read too many times. RESETTING ESP32");
+
         ESP.restart();
       }
       
@@ -294,7 +387,10 @@ void loop() {
       // only update values when sensor returns correct values
       h = new_h;
       t = new_t;
-      f = new_f;
+      f = new_c;
+
+      updateControlStatus();
+      
     }
 
     Serial.print(F("Humidity: "));
@@ -306,17 +402,6 @@ void loop() {
     Serial.println(F("°f "));
       
   }
-
-  // ADD OUT SIGNAL HERE 
-
-  //  if(h < PARAM_TARGET_HUMIDITY - low_tolerance){
-//    digitalWrite(ONBOARD_LED, HIGH);
-//    digitalWrite(RELAY_PIN,HIGH); // Set output to 1
-//    
-//  } else if(h > PARAM_TARGET_HUMIDITY + high_tolerance){
-//    digitalWrite(ONBOARD_LED, LOW);
-//    digitalWrite(RELAY_PIN,LOW); // Set output to 1
-//  }
   
   if ((WiFi.status() == WL_CONNECTED)) {
 
@@ -389,7 +474,6 @@ void loop() {
 }
 
 
-//----------------------------------------------- Fuctions used for WiFi credentials saving and connecting to it which you do not need to change
 bool testWifi(void)
 {
   int c = 0;
@@ -466,7 +550,7 @@ void setupAP(void)
   }
   st += "</ol>";
   delay(100);
-  WiFi.softAP("HumidiController", "");
+  WiFi.softAP("IOTClimateController", "");
   Serial.println("Initializing_softap_for_wifi credentials_modification");
   launchHotspot();
   Serial.println("over");

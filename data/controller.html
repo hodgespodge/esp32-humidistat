@@ -1,12 +1,17 @@
 <!DOCTYPE HTML><html>
 
 <head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
   
     chart {
     
+      font-size: 1.25em;
+
       min-width: 310px;
     	max-width: 800px;
     	min-height: 300px;
@@ -15,18 +20,48 @@
     	-webkit-flex: 3;
       -ms-flex: 3;
       flex: 3;
-      padding: 20px;
+      padding: 30px;
+      /* background-color: #93eeee; */
     }
     
     controlSettings {
     
+      font-size: 1.5em;
+
       -webkit-flex: 1;
       -ms-flex: 1;
       flex: 1;
-      background-color: #f1f1f1;
-      padding: 10px;
+      /* background-color: #93eeee; */
+      padding: 25px;
     }
+    .temperature{
+      background-color: #feb938;
+      border-radius: 35px;
+      padding: 75px;
+
+      flex: 5em;
+
+
+    }
+    .humidity{
+      background-color: #6bbcd1;
+      border-radius: 35px;
+      padding: 75px;
+
+    }
+    .misc{
+      background-color: #fd9415;
+      border-radius: 25px;
+    }
+
+    input[type="radio"] {
+    -ms-transform: scale(1.5); /* IE 9 */
+    -webkit-transform: scale(1.5); /* Chrome, Safari, Opera */
+    transform: scale(1.5);
+}
     
+    body {background-color: #fff2ce}
+
     p {
       
       display: inline 
@@ -35,6 +70,11 @@
     h2 {
       font-family: Arial;
       font-size: 2.5rem;
+      text-align: center;
+    }
+    h3 {
+      font-family: Arial;
+      font-size: 1.5rem;
       text-align: center;
     }
     
@@ -50,20 +90,28 @@
         flex-direction: column;
       }
     }
+
+
     
   </style>
 </head>
 <body>
   <header>
-    <h2>HumidiController</h2>
+    <h2>IOT Climate Controller</h2>
   </header>
+  <h3>
+    <p id = "status"></p>
+  </h3>
   <section>
+
+    
     <chart>
       <div id="chart-temperature" class="container"></div>
     </chart>
-    <controlSettings>
+    
+    <controlSettings class="temperature">
       <div>
-        Target temperature: <p id="p1">-1</p>
+        Target temperature: <p id="p1"></p>
       </div>
       <form id="setTemp" target="hidden-form">
         <input type="number " id="Target Temperature">
@@ -71,15 +119,18 @@
       <br> 
       </form>
         
-      <form>
+      <form >
         <p></p>
-        <input type="radio" id="humid" name="humidifier setting" value="humid">
-        <label for="humid">Humidifier</label><br>
-        <input type="radio" id="dehumid" name="humidifier setting" value="dehumid">
-        <label for="dehumid">Dehumidifier</label><br>
+        <input type="radio" id="radioHeaterMode" name="temperature setting" value="1" onclick="sendRadioValue('radioHeaterMode')">
+        <label for="heater">Heater</label><br>
+        <input type="radio" id="radioCoolerMode" name="temperature setting" value="-1" onclick="sendRadioValue('radioCoolerMode')">
+        <label for="cooler">Cooler</label><br>
+
         <br>  
       </form>
     </controlSettings>
+
+
   </section>
   
   <section>
@@ -87,9 +138,9 @@
       <div id="chart-humidity" class="container"></div>
     </chart>
     
-    <controlSettings>
+    <controlSettings class="humidity">
       <div>
-        Target humidity: <p id="p2">-1</p>
+        Target humidity: <p id="p2"></p>
       </div>
       <form id="setHumidity" target="hidden-form">
         <input type="number " id="Target Humidity">
@@ -97,35 +148,111 @@
       </form>
       <form>
         <p></p>
-        <input type="radio" id="heater" name="humidifier setting" value="heater">
-        <label for="heater">Heater</label><br>
-        <input type="radio" id="cooler" name="humidifier setting" value="cooler">
-        <label for="cooler">Cooler</label><br>
+        <input type="radio" id="radioHumidMode" name="humidifier setting" value="1" onclick="sendRadioValue('radioHumidMode')">
+        <label for="humid">Humidifier</label><br>
+        <input type="radio" id="radioDehumidMode" name="humidifier setting" value="-1" onclick="sendRadioValue('radioDehumidMode')" >
+        <label for="dehumid">Dehumidifier</label><br>
         <br>  
       </form>
+
     </controlSettings>
+
   </section>
+  <section>
+    <controlSettings class="misc">
+      <div>
+        Sensor read interval: <p id="controllerReadInterval"></p>
+      </div>
+      <form id="readInterval" target="hidden-form">
+        <input type="number " id="Read Interval">
+        <input type="submit" value="Submit">
+      </form>
+    </controlSettings>
+      
+  </section>  
+
   
   <iframe style="display:none" name="hidden-form"></iframe>
 </body>
 <script>
 
+let read_interval = -1;
+let status_count = 0;
+
+getStatus();
+getTargetHumidity();
+getTargetTemp();
+getReadInterval();
+
+setTimeout(getTempGraphData(),500);
+setTimeout(getHumidityGraphData(),500);
+
+function sendRadioValue(radio_id){
+
+  // console.log(radio_id); 
+
+  var ele = document.getElementById(radio_id);
+  var xhttp = new XMLHttpRequest();
+
+  if (ele.name == "humidifier setting"){
+    // console.log("setting humidifier mode"+ele.value); 
+    xhttp.open("GET","/setHumidityMode?value="+ele.value, false);
+    xhttp.send();
+    setTimeout(getStatus());
+  }
+
+  else if(ele.name == "temperature setting"){
+    // console.log("setting temp mode"+ele.value);    
+    xhttp.open("GET","/setTempMode?value="+ele.value, false);
+    xhttp.send();
+    setTimeout(getStatus());
+  } 
+
+}
+
 document.getElementById('setTemp').onsubmit = function(){
-      var xhttp = new XMLHttpRequest();
-      xhttp.open("GET","/setTemp?value="+document.getElementById('Target Temperature').value, true);
-      xhttp.send();
-      
-    
+  // console.log("setting temp");     
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET","/setTemp?value="+document.getElementById('Target Temperature').value, false);
+  xhttp.send();
+
+  setTimeout(getTargetTemp());
+  setTimeout(getStatus());
+  
 };
 
 document.getElementById('setHumidity').onsubmit = function(){
-      var xhttp = new XMLHttpRequest();
-      xhttp.open("GET","/setHumidity?value="+document.getElementById('Target Humidity').value, true);
-      xhttp.send();
-      
+  // console.log("setting hum");     
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET","/setHumidity?value="+document.getElementById('Target Humidity').value, false);
+  xhttp.send();
+
+  setTimeout(getTargetHumidity());
+  setTimeout(getStatus());
+  
 };
 
-setInterval(function ( ) {
+function getStatus(){
+
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("status").innerHTML = this.responseText;
+      status_count = 0;
+      
+    } else{
+      status_count ++ ;
+      if (status_count > 3) { // If fails to get status 3 times
+        document.getElementById("status").innerHTML = "Connection Lost";
+      }
+    }
+  };
+  xhttp.open("GET", "/getStatus", true);
+  xhttp.send();
+
+}
+
+function getTargetTemp(){
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
@@ -135,9 +262,26 @@ setInterval(function ( ) {
   };
   xhttp.open("GET", "/getTargetTemp", true);
   xhttp.send();
-}, 1000 ) ;
 
-setInterval(function ( ) {
+}
+
+setInterval(function(){
+  getTempGraphData();
+  getHumidityGraphData();
+},Math.max(read_interval,2000) );
+
+setInterval(function(){
+  getStatus();
+},Math.max(read_interval + 100, 2100));
+
+setInterval(function(){
+  getTargetTemp();
+  getTargetHumidity();
+},10000);
+
+
+function getTargetHumidity(){
+
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
@@ -147,11 +291,37 @@ setInterval(function ( ) {
   };
   xhttp.open("GET", "/getTargetHumidity", true);
   xhttp.send();
-}, 1000 ) ;
+}
+
+function getReadInterval(){
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      read_interval = parseInt(this.responseText)
+      document.getElementById("controllerReadInterval").innerHTML = read_interval + " ms";
+
+    }
+  };
+  xhttp.open("GET", "/getReadInterval", false);
+  xhttp.send(); 
+}
+
+document.getElementById('readInterval').onsubmit = function(){
+  // console.log("setting readInterval");     
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+
+    location.reload();
+  };
+  xhttp.open("GET","/setReadInterval?value="+document.getElementById('Read Interval').value, false);
+  xhttp.send();
+
+};
 
 var chartT = new Highcharts.Chart({
+  tooltip: { enabled: false },
   chart:{ renderTo : 'chart-temperature' ,
-    animation: false},
+    animation: false,backgroundColor: 'transparent'},
   title: { text: 'DHT22 Temperature' },
   series: [{
     showInLegend: false,
@@ -161,18 +331,18 @@ var chartT = new Highcharts.Chart({
     line: { animation: false,
       dataLabels: { enabled: true}
     },
-    series: { color: '#059e8a' }
+    series: { color: '#e23201' ,enableMouseTracking: false}
   },
   xAxis: { type: 'datetime',
     dateTimeLabelFormats: { second: '%H:%M:%S' }
   },
   yAxis: {
     title: { text: 'Temperature (Fahrenheit)' }
-    //title: { text: 'Temperature (Fahrenheit)' }
   },
   credits: { enabled: false }
 });
-setInterval(function ( ) {
+
+function getTempGraphData(){
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
@@ -188,11 +358,13 @@ setInterval(function ( ) {
   };
   xhttp.open("GET", "/temperature", true);
   xhttp.send();
-}, 5000 ) ;
+
+}
 
 var chartH = new Highcharts.Chart({
+  tooltip: { enabled: false },
   chart:{ renderTo:'chart-humidity',
-    animation: false },
+    animation: false ,backgroundColor: 'transparent'},
   title: { text: 'DHT22 Humidity' },
   series: [{
     showInLegend: false,
@@ -201,7 +373,8 @@ var chartH = new Highcharts.Chart({
   plotOptions: {
     line: { animation: false,
       dataLabels: { enabled: true }
-    }
+    },
+    series: { color: '#002947' ,enableMouseTracking: false}
   },
   xAxis: {
     type: 'datetime',
@@ -212,7 +385,9 @@ var chartH = new Highcharts.Chart({
   },
   credits: { enabled: false }
 });
-setInterval(function ( ) {
+
+function getHumidityGraphData(){
+
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
@@ -228,8 +403,8 @@ setInterval(function ( ) {
   };
   xhttp.open("GET", "/humidity", true);
   xhttp.send();
-}, 5000 ) ;
 
+}
 
 </script>
 </html>
