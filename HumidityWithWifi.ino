@@ -550,6 +550,12 @@ void setupAP(void)
   }
   st += "</ol>";
   delay(100);
+
+  IPAddress IP = IPAddress (192, 168, 1, 1); 
+//  IPAddress gateway = IPAddress (10, 10, 2, 8); 
+  IPAddress NMask = IPAddress (255, 255, 255, 0); 
+  
+  WiFi.softAPConfig(IP, IP, NMask);
   WiFi.softAP("IOTClimateController", "");
   Serial.println("Initializing_softap_for_wifi credentials_modification");
   launchHotspot();
