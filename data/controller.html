@@ -12,15 +12,20 @@
     
       font-size: 1.25em;
 
-      min-width: 310px;
-    	max-width: 800px;
-    	min-height: 300px;
-    	max-height: 500px;
+      /* min-width: 310px; */
+      min-width: 20em;
+    	/* max-width: 1200px; */
+      max-width: 80em;
+    	/* min-height: 300px; */
+      min-height: 20em; 
+    	/* max-height: 500px; */
+      max-height: 30em;
     	
     	-webkit-flex: 3;
       -ms-flex: 3;
       flex: 3;
-      padding: 30px;
+      /* padding: 30px; */
+      padding: 2em;
       /* background-color: #93eeee; */
     }
     
@@ -32,14 +37,14 @@
       -ms-flex: 1;
       flex: 1;
       /* background-color: #93eeee; */
-      padding: 25px;
+      /* padding: 25px; */
     }
     .temperature{
       background-color: #feb938;
       border-radius: 35px;
       padding: 75px;
 
-      flex: 5em;
+      /* flex: 5em; */
 
 
     }
@@ -53,6 +58,7 @@
       background-color: #fd9415;
       border-radius: 25px;
       font-size: 1.25em;
+      
     }
 
     input[type="radio"] {
@@ -86,11 +92,76 @@
     
     /* Responsive layout - makes stacked on narrow screens */
     @media (max-width: 800px) {
+    /* @media (max-width: 75%) { */
       section {
         -webkit-flex-direction: column;
         flex-direction: column;
       }
     }
+    .switch-button {
+	 background: #fff2ce;
+	 border-radius: 30px;
+	 overflow: hidden;
+	 width: 180px;
+	 text-align: center;
+	 font-size: 18px;
+	 letter-spacing: 1px;
+	 color: #213a41;
+	 position: relative;
+	 padding-right: 160px;
+	 position: relative;
+}
+ .switch-button:before {
+	 content: "ON";
+	 position: absolute;
+	 top: 0;
+	 bottom: 0;
+	 right: 0;
+	 width: 120px;
+	 display: flex;
+	 align-items: center;
+	 justify-content: center;
+	 z-index: 3;
+	 pointer-events: none;
+}
+ .switch-button-checkbox {
+	 cursor: pointer;
+	 position: absolute;
+	 top: 0;
+	 left: 0;
+	 bottom: 0;
+	 width: 100%;
+	 height: 100%;
+	 opacity: 0;
+	 z-index: 2;
+}
+ .switch-button-checkbox:checked + .switch-button-label:before {
+	 transform: translateX(160px);
+	 transition: transform 300ms linear;
+}
+ .switch-button-checkbox + .switch-button-label {
+	 position: relative;
+	 padding: 15px 0;
+	 display: block;
+	 user-select: none;
+	 pointer-events: none;
+}
+ .switch-button-checkbox + .switch-button-label:before {
+	 content: "";
+	 background: #feb938;
+	 height: 100%;
+	 width: 100%;
+	 position: absolute;
+	 left: 0;
+	 top: 0;
+	 border-radius: 30px;
+	 transform: translateX(0);
+	 transition: transform 300ms;
+}
+ .switch-button-checkbox + .switch-button-label .switch-button-label-span {
+	 position: relative;
+}
+ 
 
 
     
@@ -166,8 +237,19 @@
       </div>
       <form id="readInterval" target="hidden-form">
         <input type="number " id="Read Interval">
-        <input type="submit" value="Submit">
+        <input type="submit" value="Submit"> (will reload page)
       </form>
+    </controlSettings>
+
+    <controlSettings class="misc">
+      <div>
+        Bonus out mode: <p id="bonusPinMode"></p>
+        <div class="switch-button" >
+          <input class="switch-button-checkbox" type="checkbox" id="pinModeSwitch" onclick="sendBonusPin()"></input>
+          <label class="switch-button-label" for=""><span class="switch-button-label-span">OFF</span></label>
+        </div>
+      
+
     </controlSettings>
       
   </section>  
@@ -179,14 +261,34 @@
 
 let read_interval = -1;
 let status_count = 0;
+let bonusPinMode = 0;
 
 getStatus();
 getTargetHumidity();
 getTargetTemp();
 getReadInterval();
+getBonusPinMode();
+
 
 setTimeout(getTempGraphData(),500);
 setTimeout(getHumidityGraphData(),500);
+
+function sendBonusPin(){
+  
+  var pin_out = ""
+
+  if (document.getElementById("pinModeSwitch").checked){
+    var pin_out = "1"
+  }else{
+    var pin_out = "0"
+  }
+
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET","/setBonusPinMode?value="+pin_out, false);
+  xhttp.send();
+  setTimeout(getBonusPinMode());
+
+}
 
 function sendRadioValue(radio_id){
 
@@ -233,6 +335,21 @@ document.getElementById('setHumidity').onsubmit = function(){
   
 };
 
+setInterval(function(){
+  getTempGraphData();
+  getHumidityGraphData();
+},Math.max(read_interval,2000) );
+
+setInterval(function(){
+  getStatus();
+},Math.max(read_interval + 100, 2100));
+
+setInterval(function(){
+  getTargetTemp();
+  getTargetHumidity();
+  getBonusPinMode();
+},10000);
+
 function getStatus(){
 
   var xhttp = new XMLHttpRequest();
@@ -266,19 +383,6 @@ function getTargetTemp(){
 
 }
 
-setInterval(function(){
-  getTempGraphData();
-  getHumidityGraphData();
-},Math.max(read_interval,2000) );
-
-setInterval(function(){
-  getStatus();
-},Math.max(read_interval + 100, 2100));
-
-setInterval(function(){
-  getTargetTemp();
-  getTargetHumidity();
-},10000);
 
 
 function getTargetHumidity(){
@@ -305,6 +409,25 @@ function getReadInterval(){
   };
   xhttp.open("GET", "/getReadInterval", false);
   xhttp.send(); 
+}
+
+function getBonusPinMode(){
+
+var xhttp = new XMLHttpRequest();
+xhttp.onreadystatechange = function() {
+  if (this.readyState == 4 && this.status == 200) {
+    bonusPinMode = parseInt(this.responseText);
+
+    if (bonusPinMode == "1"){
+      document.getElementById("pinModeSwitch").checked = true;
+    }else{
+      document.getElementById("pinModeSwitch").checked = false;
+    }
+
+  }
+};
+xhttp.open("GET", "/getBonusPinMode", true);
+xhttp.send();
 }
 
 document.getElementById('readInterval').onsubmit = function(){

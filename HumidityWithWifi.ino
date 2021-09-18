@@ -35,7 +35,8 @@ String epass = "";
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 
 #define ONBOARD_LED 2
-#define RELAY_PIN 5
+#define HUM_RELAY_PIN 5
+#define BONUS_PIN 17
 
 //Function Decalration
 bool testWifi(void);
@@ -86,6 +87,7 @@ String readTargetHumidity(){
 
 signed char humidityMode;  // [- 1 or 1]
 signed char tempMode;      // [- 1 or 1]
+unsigned char bonusPinMode;
 
 //bool humidity_control_out = true;
 //bool temp_control_out= true;
@@ -156,7 +158,7 @@ void setup()
   pinMode(HOTSPOT_LED, OUTPUT);
 
   pinMode(ONBOARD_LED, OUTPUT);
-  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(HUM_RELAY_PIN, OUTPUT);
 
   digitalWrite(WIFI_LED, LOW);
   digitalWrite(HOTSPOT_LED, LOW);
@@ -197,6 +199,7 @@ void setup()
   tempMode = readFile(SPIFFS,"/tempMode.txt").toInt();
   humidityMode = readFile(SPIFFS, "/humidityMode.txt").toInt();
   sensorReadInterval = readFile(SPIFFS, "/sensorReadInterval.txt").toInt();
+  bonusPinMode = readFile(SPIFFS, "/bonusPinMode.txt").toInt();
 
   /////////////////////////////////////////////////
   // Route for root / web page
@@ -226,6 +229,9 @@ void setup()
   });
   controlServer.on("/getReadInterval", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(sensorReadInterval).c_str());
+  });
+  controlServer.on("/getBonusPinMode", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(bonusPinMode).c_str()); //TODO
   });
   
   controlServer.on("/setTemp",HTTP_GET,[] (AsyncWebServerRequest *request){
@@ -285,6 +291,19 @@ void setup()
     }
   });
 
+  controlServer.on("/setBonusPinMode",HTTP_GET,[] (AsyncWebServerRequest *request){
+    String inputValue;
+    inputValue = request->getParam("value")->value();
+    request->send(200, "text/plain", "bonusPinMode received");
+    Serial.print("received /setBonusPinMode ");
+    Serial.println(inputValue);
+
+    if (bonusPinMode != inputValue.toInt()){
+      bonusPinMode = inputValue.toInt();
+      writeFile(SPIFFS, "/bonusPinMode.txt", inputValue.c_str());
+    }
+  });
+
 }
 
 
@@ -334,8 +353,6 @@ unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
-
-
 bool led_on = true;
 
 unsigned short num_failed_reads_in_row = 0;
@@ -350,7 +367,6 @@ unsigned long previousTimeDHT = 0;
 //unsigned long previousTimeParams = 0;
 
 void loop() {
-
 
   currentTimeLED = millis();
 
@@ -390,6 +406,28 @@ void loop() {
       f = new_c;
 
       updateControlStatus();
+
+      if ( humidity_control_out ){
+        digitalWrite(HUM_RELAY_PIN, HIGH);
+        Serial.println("Humidity pin out HIGH");
+      }else{
+        digitalWrite(HUM_RELAY_PIN, LOW);
+        Serial.println("Humidity pin out LOW");
+      }
+      
+      if (temp_control_out){
+        Serial.println("Temp pin out High ");
+      }else{
+        Serial.println("Temp pin out LOW");
+      }
+
+      if(bonusPinMode){
+        digitalWrite(BONUS_PIN, HIGH);
+        Serial.println("BONUS pin out HIGH");
+      }else{
+        digitalWrite(BONUS_PIN, LOW);
+        Serial.println("BONUS pin out LOW");
+      }
       
     }
 
