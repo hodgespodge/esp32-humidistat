@@ -8,7 +8,7 @@ This project uses the ardunio ide for compiling and uploading.
 
 - After installing the IDE, we need to install the ESP32 board. In the Arduino IDE, go to file -> preferences. Near the bottom there should be a "Additional Boards Manager URLS:" field. Add the following url: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`. Additional boards can be added by separating each url with a comma.
 
-- Now exit preferences and go to Toos -> Boards -> Boards Manager. Search for esp32 and install **ESP32 by Espressif Systems**. After installation is complete, you should be able to select the **ESP32 Dev Module** in the Tools -> Boards menu. 
+- Now exit preferences and go to Tools -> Boards -> Boards Manager. Search for esp32 and install **ESP32 by Espressif Systems**. After installation is complete, you should be able to select the **ESP32 Dev Module** in the Tools -> Boards menu. 
 
 - This project uses the SPIFFS file system in order to save user settings between reboots. You should follow the instructions [here](https://randomnerdtutorials.com/install-esp32-filesystem-uploader-arduino-ide/) to install the ESP32 filesystem uploader. 
 
