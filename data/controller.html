@@ -284,8 +284,16 @@ function sendBonusPin(){
   }
 
   var xhttp = new XMLHttpRequest();
-  xhttp.open("GET","/setBonusPinMode?value="+pin_out, false);
-  xhttp.send();
+  // xhttp.open("PUT","/setBonusPinMode?value="+pin_out, false);
+  xhttp.open("PUT","/setBonusPinMode", false);
+  // xhttp.setRequestHeader('Content-type','application/json; charset=utf-8')
+  // xhttp.send(JSON.stringify({value : pin_out}));
+
+  xhttp.setRequestHeader('Content-type','text/plain; charset=utf-8')
+  xhttp.send("value="+pin_out);
+
+
+  // xhttp.send();
   setTimeout(getBonusPinMode());
 
 }
@@ -299,15 +307,30 @@ function sendRadioValue(radio_id){
 
   if (ele.name == "humidifier setting"){
     // console.log("setting humidifier mode"+ele.value); 
-    xhttp.open("GET","/setHumidityMode?value="+ele.value, false);
-    xhttp.send();
+    // xhttp.open("PUT","/setHumidityMode?value="+ele.value, false);
+    xhttp.open("PUT","/setHumidityMode", false);
+    // xhttp.setRequestHeader('Content-type','application/json; charset=utf-8')
+    // xhttp.send(JSON.stringify({value : ele.value}));
+
+    xhttp.setRequestHeader('Content-type','text/plain; charset=utf-8')
+    xhttp.send("value="+ele.value);
+
     setTimeout(getStatus());
+
+
   }
 
   else if(ele.name == "temperature setting"){
     // console.log("setting temp mode"+ele.value);    
-    xhttp.open("GET","/setTempMode?value="+ele.value, false);
-    xhttp.send();
+    // xhttp.open("PUT","/setTempMode?value="+ele.value, false);
+    xhttp.open("PUT","/setTempMode", false);
+
+    // xhttp.setRequestHeader('Content-type','application/json; charset=utf-8')
+    // xhttp.send(JSON.stringify({value : ele.value}));
+
+    xhttp.setRequestHeader('Content-type','text/plain; charset=utf-8')
+    xhttp.send("value="+ele.value);
+
     setTimeout(getStatus());
   } 
 
@@ -316,8 +339,15 @@ function sendRadioValue(radio_id){
 document.getElementById('setTemp').onsubmit = function(){
   // console.log("setting temp");     
   var xhttp = new XMLHttpRequest();
-  xhttp.open("GET","/setTemp?value="+document.getElementById('Target Temperature').value, false);
-  xhttp.send();
+  // xhttp.open("PUT","/setTemp?value="+document.getElementById('Target Temperature').value, false);
+  xhttp.open("PUT","/setTemp", false);
+
+  // xhttp.setRequestHeader('Content-type','application/json; charset=utf-8')
+  // xhttp.send(JSON.stringify({value :  document.getElementById('Target Temperature').value}));
+
+  xhttp.setRequestHeader('Content-type','text/plain; charset=utf-8')
+  xhttp.send("value="+document.getElementById('Target Temperature').value);
+
 
   setTimeout(getTargetTemp());
   setTimeout(getStatus());
@@ -327,8 +357,15 @@ document.getElementById('setTemp').onsubmit = function(){
 document.getElementById('setHumidity').onsubmit = function(){
   // console.log("setting hum");     
   var xhttp = new XMLHttpRequest();
-  xhttp.open("GET","/setHumidity?value="+document.getElementById('Target Humidity').value, false);
-  xhttp.send();
+  // xhttp.open("PUT","/setHumidity?value="+document.getElementById('Target Humidity').value, false);
+  xhttp.open("PUT","/setHumidity", false);  
+
+  // xhttp.setRequestHeader('Content-type','application/json; charset=utf-8')
+  // xhttp.send(JSON.stringify({value : document.getElementById('Target Humidity').value}));
+
+  xhttp.setRequestHeader('Content-type','text/plain; charset=utf-8')
+  xhttp.send("value="+document.getElementById('Target Humidity').value);
+
 
   setTimeout(getTargetHumidity());
   setTimeout(getStatus());
@@ -437,8 +474,20 @@ document.getElementById('readInterval').onsubmit = function(){
 
     location.reload();
   };
-  xhttp.open("GET","/setReadInterval?value="+document.getElementById('Read Interval').value, false);
-  xhttp.send();
+
+
+
+  // xhttp.open("PUT","/setReadInterval?value="+document.getElementById('Read Interval').value, false);
+  xhttp.open("PUT","/setReadInterval", false);
+
+  // xhttp.setRequestHeader('Content-type','application/json; charset=utf-8')
+  // xhttp.send(JSON.stringify({value : document.getElementById('Read Interval').value}));
+
+  xhttp.setRequestHeader('Content-type','text/plain; charset=utf-8')
+  xhttp.send("value="+document.getElementById('Read Interval').value);
+
+
+  // xhttp.send();
 
 };
 

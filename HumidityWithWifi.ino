@@ -110,7 +110,7 @@ String readControlStatus(){
     out += "dehumidifier: ";
   }
 
-  updateControlStatus();
+//  updateControlStatus();
  
   if (humidity_control_out){
     out += "on";
@@ -192,8 +192,6 @@ void setup()
 
   WiFi.begin(esid.c_str(), epass.c_str());
 
-  
-
   targetTemp = readFile(SPIFFS, "/tempInput.txt").toFloat();
   targetHumidity = readFile(SPIFFS, "/humidityInput.txt").toFloat();
   tempMode = readFile(SPIFFS,"/tempMode.txt").toInt();
@@ -234,7 +232,8 @@ void setup()
     request->send_P(200, "text/plain", String(bonusPinMode).c_str()); //TODO
   });
   
-  controlServer.on("/setTemp",HTTP_GET,[] (AsyncWebServerRequest *request){
+  controlServer.on("/setTemp",HTTP_PUT,[] (AsyncWebServerRequest *request){
+    Serial.println("In setTemp");
     String inputValue;
     inputValue = request->getParam("value")->value();
     request->send(200, "text/plain", "targetTemp received");
@@ -246,7 +245,8 @@ void setup()
     
   });
 
-  controlServer.on("/setHumidity",HTTP_GET,[] (AsyncWebServerRequest *request){
+  controlServer.on("/setHumidity",HTTP_PUT,[] (AsyncWebServerRequest *request){
+    Serial.println("In setHumidity");
     String inputValue;
     inputValue = request->getParam("value")->value();
     request->send(200, "text/plain", "targetHumidity received");
@@ -257,7 +257,8 @@ void setup()
     }
   });
 
-  controlServer.on("/setTempMode",HTTP_GET,[] (AsyncWebServerRequest *request){
+  controlServer.on("/setTempMode",HTTP_PUT,[] (AsyncWebServerRequest *request){
+    Serial.println("In setTempMode");
     String inputValue;
     inputValue = request->getParam("value")->value();
     request->send(200, "text/plain", "tempMode received");
@@ -269,7 +270,8 @@ void setup()
   });
 
 
-  controlServer.on("/setHumidityMode",HTTP_GET,[] (AsyncWebServerRequest *request){
+  controlServer.on("/setHumidityMode",HTTP_PUT,[] (AsyncWebServerRequest *request){
+         Serial.println("In setHumidityMode");
     String inputValue;
     inputValue = request->getParam("value")->value();
     request->send(200, "text/plain", "humidityMode received");
@@ -280,7 +282,8 @@ void setup()
     }
   });
 
-  controlServer.on("/setReadInterval",HTTP_GET,[] (AsyncWebServerRequest *request){
+  controlServer.on("/setReadInterval",HTTP_PUT,[] (AsyncWebServerRequest *request){
+     Serial.println("In setReadInterval");
     String inputValue;
     inputValue = request->getParam("value")->value();
     request->send(200, "text/plain", "readInterval received");
@@ -291,7 +294,9 @@ void setup()
     }
   });
 
-  controlServer.on("/setBonusPinMode",HTTP_GET,[] (AsyncWebServerRequest *request){
+  controlServer.on("/setBonusPinMode",HTTP_PUT,[] (AsyncWebServerRequest *request){
+    
+    Serial.println("In setBonusPinMode");
     String inputValue;
     inputValue = request->getParam("value")->value();
     request->send(200, "text/plain", "bonusPinMode received");
@@ -589,7 +594,7 @@ void setupAP(void)
   st += "</ol>";
   delay(100);
 
-  IPAddress IP = IPAddress (192, 168, 1, 1); 
+  IPAddress IP = IPAddress (192, 168, 1, 56); 
 //  IPAddress gateway = IPAddress (10, 10, 2, 8); 
   IPAddress NMask = IPAddress (255, 255, 255, 0); 
   
